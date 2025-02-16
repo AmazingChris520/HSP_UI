@@ -1,18 +1,24 @@
 import PySimpleGUI as sg
-import socket
 import time as timer
+import random
+import string
+import operator
 
-def Send(message):
-	TCP_IP = '192.168.1.200' # Pi Ethernet IP Address
-	TCP_PORT = 6005
-	BUFFER_SIZE = 1024
+def sort_table(table, cols):
+    """ sort a table by multiple columns
+        table: a list of lists (or tuple of tuples) where each inner list
+               represents a row
+        cols:  a list (or tuple) specifying the column numbers to sort by
+               e.g. (1,0) would sort by column 1, then by column 0
+    """
+    for col in reversed(cols):
+        try:
+            table = sorted(table, key=operator.itemgetter(col))
+        except Exception as e:
+            sg.popup_error('Error in sort_table', 'Exception in sort_table', e)
+    return table
 
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s.connect((TCP_IP, TCP_PORT))
-	s.send(bytes(message,'utf-8'))
-	s.close()
-
-def Events(events):
+def Events(events, values):
 	global a
 	global b
 	global c
@@ -35,97 +41,26 @@ def Events(events):
 	global seqTime
 	global start_time
 
-	if event == "FS":
-		isFillOpen = True
-		Send("fill on")
-
-	elif event == "OM":
-		isMainOn = True
-		Send("main on")
-
-	elif event == "SI":
-		isIgniteOn = True
-		Send("ignite on")
-
-	elif event == "OV":
-		isVentOpen = True
-		Send("vent on")
-
-	elif event == "Close Fill Servo":
-		isFillOpen = False
-		Send("fill off")
-
-	elif event == "Close Main":
-		isMainOn = False
-		Send("main off")
-
-	elif event == "Close Ignition":
-		isIgniteOn = False
-		Send("ignite off")
-
-	elif event == "Close Vent":
-		isVentOpen = False
-		Send("vent off")
-
-	elif event == "Seq":
-		try:
-			seqTime = float(values['inp'])
-			isSeq = True
-			isVentOpen = True
-			start_time = timer.time()
-			Send("vent on")
-		except:
-			window['Seq'].update(disabled=True)
-			window['inp'].update(readonly=False)
-			e+=1
-
-	elif event == "Arm Fill":
-		if (a % 2 == 1):
-			window['FS'].update(disabled=False)
-		else:
-			window['FS'].update(disabled=True)
-
-		a+=1
-
-	elif event == "Arm Main":
-		if (b % 2 == 1):
-			window['OM'].update(disabled=False)
-		else:
-			window['OM'].update(disabled=True)
-
-		b+=1
-
-	elif event == "Arm Ignition":
-		if (c % 2 == 1):
-			window['SI'].update(disabled=False)
-		else:
-			window['SI'].update(disabled=True)
-
-		c+=1
-
-	elif event == "Arm Vent":
-		if (d % 2 == 1):
-			window['OV'].update(disabled=False)
-		else:
-			window['OV'].update(disabled=True)
-
-		d+=1
-
-	elif event == "Arm Seq":
-		if (e % 2 == 1):
-			window['Seq'].update(disabled=False)
-			window['inp'].update(readonly=True)
-		else:
-			window['Seq'].update(disabled=True)
-			window['inp'].update(readonly=False)
-
-		e+=1
-
-	elif event == 'LOAD':
+	if event == 'Double':
+		for i in range(1, len(data)):
+			data.append(data[i])
+		window['-TABLE-'].update(values=data[1:][:])
+	if isinstance(event, tuple):
+		# TABLE CLICKED Event has value in format ('-TABLE=', '+CLICKED+', (row,col))
+		if event[0] == '-TABLE-':
+			if event[2][0] == -1 and event[2][1] != -1:           # Header was clicked and wasn't the "row" column
+				col_num_clicked = event[2][1]
+				new_table = sort_table(data[1:][:],(col_num_clicked, 0))
+				window['-TABLE-'].update(new_table)
+				data = [data[0]] + new_table
+			window['-CLICKED-'].update(f'{event[2][0]},{event[2][1]}')
+	print(values['TABLE'])
+	if values['TABLE'] == [0]:
+		print("geeffsd")
 		LoadGraph = not LoadGraph
 		window['LoadGraph'].update(visible=LoadGraph)
 		
-	elif event == 'TP':
+	elif event == 'TABLE':
 		TPGraph = not TPGraph
 		window['TPGraph'].update(visible=TPGraph)
 		
@@ -165,15 +100,14 @@ def Events(events):
 class Sensor:
 	global x
 
-	def __init__(self, window, box, name, Unit):
+	def __init__(self, window, name, Unit):
 		self.graph = window
 		self.visible = False
-		self.value = box
 		self.tempData = 0
 		self.data = 0
 		self.title = name
 		self.unit = Unit
-
+	
 	def Assign(self, value):
 		self.tempData = self.data
 		try:
@@ -181,8 +115,8 @@ class Sensor:
 		except:
 			self.data = 0
 						
-		self.value.update(self.title + ":\n" + str(self.data) + " " + self.unit)
-
+		#self.value.update(self.title + ":\n" + str(self.data) + " " + self.unit)
+	
 	def Lines(self, start, height, startRange, endRange, dist):
 		self.graph.move(dist,0)
 		self.graph.DrawLine((-500,-500), (-500,1000))
@@ -212,12 +146,10 @@ class Sensor:
 			self.graph.DrawCircle((x,self.data), 1, line_color = color)
 		else:
 			self.graph.DrawLine((x,self.tempData), (x,self.data), color, 2)
+
+	def getData(self):
+		return [self.title, str(round(self.data,2)) + " " + self.unit]
 			
-
-# Original Colors by Ashlyn
-# backgroundColor = "#32B1D0"
-# buttonColor = "#983C3C"
-
 backgroundColor = "#121212"
 buttonColor = "#8e3563"
 disabledButton = "#000000"
@@ -230,59 +162,65 @@ font2 = "Comic 20"
 padding = [10,10]
 paddingSensor = [15,2]
 
-column_layout1 = [ [sg.Text("Main", text_color = textColor, background_color=backgroundColor, justification='c', font = font2, p=padding, key = 'Main'), sg.Button("Arm", key = 'Arm Main', button_color = buttonColor, font = font2, p=padding)],
-					[sg.Button("On", button_color = buttonColor, key = 'OM', disabled = True, font = font2, p=padding), sg.Button("Off", key = 'Close Main', button_color = buttonColor,  font = font2, p=padding), sg.Text(key = 'MA', justification = 'center', background_color = offColor,  font = font2, p=padding)],
-					[sg.Text("Ignition", text_color = textColor, background_color=backgroundColor,  font = font2, p=padding), sg.Button("Arm", key = 'Arm Ignition', button_color = buttonColor,  font = font2, p=padding)],
-					[sg.Button("On", key = 'SI', disabled = True, button_color = buttonColor,  font = font2, p=padding), sg.Button("Off", key = 'Close Ignition', button_color = buttonColor,  font = font2, p=padding), sg.Text(key = 'IA', justification = 'center', background_color = offColor,  font = font2, p=padding)],
-					[sg.Text("Fill", text_color = textColor, background_color=backgroundColor,  font = font2, p=padding), sg.Button("Arm", key = 'Arm Fill', button_color = buttonColor,  font = font2, p=padding)],
-					[sg.Button("On", key = 'FS', disabled = True, button_color = buttonColor,  font = font2, p=padding), sg.Button("Off", key = 'Close Fill Servo', button_color = buttonColor,  font = font2), sg.Text(key = 'FA', justification = 'center', background_color = offColor,  font = font2, p=padding)],
-					[sg.Text("Purge", text_color = textColor, background_color=backgroundColor,  font = font2, p=padding), sg.Button("Arm", key = 'Arm Vent', button_color = buttonColor,  font = font2, p=padding)],
-					[sg.Button("On", key = 'OV', disabled = True, button_color = buttonColor,  font = font2, p=padding), sg.Button("Off", key = 'Close Vent', button_color = buttonColor,  font = font2, p=padding), sg.Text(key = 'TA', justification = 'center', background_color = offColor,  font = font2, p=padding)],
-					[sg.Text("Automatic Purge Sequence (Input Time In Seconds)", text_color = textColor, background_color=backgroundColor,  font = font2, p=padding)],
-				    [sg.Input("", font=font2, k = 'inp', p=padding, size=(10,20))],
-					[sg.Button("On", key = 'Seq', disabled = True, button_color = buttonColor,  font = font2), sg.Button("Arm", key = 'Arm Seq', button_color = buttonColor,  font = font2, p=padding)],
-				    [sg.Checkbox("Launch Mode", font=font2, background_color=backgroundColor, checkbox_color=buttonColor, key='Check', enable_events=True, p=padding)]]
+column_layout1 = [[ sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,1600), key='PT-ETH-01', visible = False, background_color=buttonBackgroundColor),
+			sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,1600), key='PT-ETH-02', visible = False, background_color=buttonBackgroundColor),
+			sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,1600), key='PT-NO-01', visible = False, background_color=buttonBackgroundColor),
+			sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,1600), key='PT-NO-02', visible = False, background_color=buttonBackgroundColor),
+			sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,1600), key='PT-NO-03', visible = False, background_color=buttonBackgroundColor)],
+			[sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-2), graph_top_right=(500,1600), key='PT-CH-01', visible = False, background_color=buttonBackgroundColor),
+			sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-1400), graph_top_right=(500,1400), key='TOT-WEIGHT', visible = False, background_color=buttonBackgroundColor),
+			sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,100), key='TC-01', visible = False, background_color=buttonBackgroundColor),
+			sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,100), key='TC-02', visible = False, background_color=buttonBackgroundColor),
+			sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,100), key='TC-03', visible = False, background_color=buttonBackgroundColor),]]
 
-column_layout2 = [	
-			[ sg.Button(key = 'LOAD', button_color = ("#5C8374",buttonBackgroundColor),  font = fontAndSize, size = paddingSensor), sg.Button(key = 'TP', button_color = ("#087cb4", buttonBackgroundColor),  font = fontAndSize, size = paddingSensor), sg.Button(key = 'VD', button_color = ("#F2613F",buttonBackgroundColor),  font = fontAndSize, size = paddingSensor)]]
+column_layout5 = [[sg.Column(column_layout1, scrollable=True, key='dsd', background_color=backgroundColor, expand_x=True , expand_y=True, sbar_arrow_color=buttonBackgroundColor, sbar_background_color=buttonBackgroundColor, sbar_frame_color=buttonBackgroundColor, sbar_trough_color=buttonBackgroundColor)]]
 
-col_layout3 = [[ sg.Graph(canvas_size=(400, 400),graph_bottom_left=(-500,-20), graph_top_right=(500,200), key='LoadGraph', visible = False, background_color=buttonBackgroundColor),
-			sg.Graph(canvas_size=(400, 400),graph_bottom_left=(-500,-20), graph_top_right=(500,1000), key='TPGraph', visible = False, background_color=buttonBackgroundColor),
-			sg.Graph(canvas_size=(400, 400),graph_bottom_left=(-500,-50), graph_top_right=(500,60), key='VDGraph', visible = False, background_color=buttonBackgroundColor)],
-			[sg.Graph(canvas_size=(400, 400),graph_bottom_left=(-500,-2), graph_top_right=(500,100), key='ITGraph', visible = False, background_color=buttonBackgroundColor),
-			sg.Graph(canvas_size=(400, 400),graph_bottom_left=(-500,-20), graph_top_right=(500,1000), key='IPGraph', visible = False, background_color=buttonBackgroundColor),
-			sg.Graph(canvas_size=(400, 400),graph_bottom_left=(-500,-2), graph_top_right=(500,100), key='CTGraph', visible = False, background_color=buttonBackgroundColor),
-			sg.Graph(canvas_size=(400, 400),graph_bottom_left=(-500,-20), graph_top_right=(500,1000), key='FPGraph', visible = False, background_color=buttonBackgroundColor)]]
+colors = [
+	[0, "#000000", backgroundColor],
+	[1, "#023000", backgroundColor],
+	[2, "#006050", backgroundColor],
+	[3, "#000540", backgroundColor],
+	[4, "#034000", backgroundColor],
+	[5, "#002600", backgroundColor],
+	[6, "#001200", backgroundColor],
+	[7, "#002300", backgroundColor],
+	[8, "#004320", backgroundColor],
+	[9, "#006500", backgroundColor],
+]
 
-col_layout4 = [[sg.Button(key = 'FP', button_color = ('#5C527F',buttonBackgroundColor),  font = fontAndSize, size = paddingSensor), sg.Button(key = 'IP', button_color = ('#5C527F',buttonBackgroundColor),  font = fontAndSize, size = paddingSensor)],
-			[sg.Button(key = 'CT', button_color = ('#E95793',buttonBackgroundColor),  font = fontAndSize, size = paddingSensor), sg.Button(key = 'IT', button_color = ('#E95793',buttonBackgroundColor),  font = fontAndSize, size = paddingSensor)] ]
+layout = [[sg.Table(values=[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],], headings=["Sensor", "Value"],
+					cols_justification = ['l','r'],
+					col_widths = [1,1],
+					def_col_width = 2,
+					auto_size_columns = False,
+					hide_vertical_scroll = True,
+					row_height = 100,
+					row_colors = colors,
+					font = "Comic 25",
+					header_background_color = backgroundColor,
+					header_text_color = textColor,
+					background_color=backgroundColor,
+					key='TABLE',
+					enable_events=True,
+					expand_x=True,
+					expand_y=True,), sg.Column(column_layout5, element_justification='center', background_color=backgroundColor,  vertical_alignment='c', k = 'col2', expand_x=True , expand_y=True)]]
 
-column_layout5 = [[sg.Col(column_layout2, background_color=backgroundColor, k = 'col2.5')], [sg.Column(col_layout3, scrollable=True, key='dsd', background_color=backgroundColor, expand_x=True , expand_y=True, sbar_arrow_color=buttonBackgroundColor, sbar_background_color=buttonBackgroundColor, sbar_frame_color=buttonBackgroundColor, sbar_trough_color=buttonBackgroundColor)], [sg.Col(col_layout4, background_color=backgroundColor, k='col4.5')]]
+window = sg.Window('HSP UI', layout, grab_anywhere=True, finalize=True, background_color=backgroundColor, size = (1920,1080), resizable=True, scaling=1)  
 
-layout = [[sg.Column(column_layout1, element_justification='left', background_color=backgroundColor, expand_x=True, expand_y=True, k = 'col1'), sg.Column(column_layout5, element_justification='center', background_color=backgroundColor,  vertical_alignment='c', k = 'col2', expand_x=True , expand_y=True)]]
-
-window = sg.Window('Valkryie UI', layout, grab_anywhere=True, finalize=True, background_color=backgroundColor, size = (1280,720), resizable=True, scaling=1)  
-
-load = Sensor(window['LoadGraph'], window['LOAD'], "Load", "kg")
-tankPress = Sensor(window['TPGraph'], window['TP'], "Tank Press", "psi")
-tankTemp = Sensor(window['VDGraph'], window['VD'], "Tank Temp", "C")
-combPress = Sensor(window['IPGraph'], window['IP'], "Comb Press", "psi")
-combTopTemp = Sensor(window['ITGraph'], window['IT'], "Comb Top Temp", "C")
-combBotTemp = Sensor(window['CTGraph'], window['CT'], "Comb Bot Temp", "C")
-feedPress = Sensor(window['FPGraph'], window['FP'], "Feed Press", "psi")
+pT_ETH_01 = Sensor(window['PT-ETH-01'], "PT-ETH-01", "psi")
+pT_ETH_02 = Sensor(window['PT-ETH-02'], "PT-ETH-02", "psi")
+pT_NO_01 = Sensor(window['PT-NO-01'], "PT-NO-01", "psi")
+pT_NO_02 = Sensor(window['PT-NO-02'], "PT-NO-02", "psi")
+pT_NO_03 = Sensor(window['PT-NO-03'], "PT-NO-03", "psi")
+pT_CH_01 = Sensor(window['PT-CH-01'], "PT-CH-01", "psi")
+tOT_WEIGHT = Sensor(window['TOT-WEIGHT'], "TOT-Weight", "lb")
+tC_01 = Sensor(window['TC-01'], "TC-01", "F")
+tC_02 = Sensor(window['TC-02'], "TC-02", "F")
+tC_03 = Sensor(window['TC-03'], "TC-03", "F")
 
 # Draw Graph    
 x = -500
 h = 0
-a = 1
-b = 1
-c = 1
-d = 1
-e = 1
-isFillOpen = False
-isVentOpen = False
-isMainOn = False
-isIgniteOn = False
 LoadGraph = False
 TPGraph = False
 VDGraph = False
@@ -290,11 +228,19 @@ IPGraph = False
 ITGraph = False
 CTGraph = False
 FPGraph = False
-FlightMode = False
-seqTime = 0
-isSeq = False
-start_time = 0
 
+pT_ETH_01.Lines(-500, 950, -10, 1600, 0)
+pT_ETH_02.Lines(-500, 190, -10, 1600, 0)
+pT_NO_01.Lines(-500, 190, -10, 1600, 0)
+pT_NO_02.Lines(-500, 190, -10, 1600, 0)
+pT_NO_03.Lines(-500, 190, -10, 1600, 0)
+pT_CH_01.Lines(-500, 190, -10, 1600, 0)
+tOT_WEIGHT.Lines(-500, 1200, -1400, 1400, 0)
+tC_01.Lines(-500, 90, -20, 100, 0)
+tC_02.Lines(-500, 90, -20, 100, 0)
+tC_03.Lines(-500, 90, -20, 100, 0)
+
+'''
 load.Lines(-500, 190, 20, 200, 0)
 tankPress.Lines(-500, 950, 100, 1000, 0)
 tankTemp.Lines(-500, 55, -40, 60, 0)
@@ -302,21 +248,28 @@ combPress.Lines(-500, 950, 100, 1000, 0)
 combTopTemp.Lines(-500, 95, 10, 100, 0)
 combBotTemp.Lines(-500, 95, 10, 100, 0)
 feedPress.Lines(-500, 950, 100, 1000, 0)
+'''
 startingSize = (1920,1080)
 
-with open('C:\\Users\\chris\\Documents\\ValkryieLaunchData.csv') as f:
+with open('C:\\Users\\chris\\Downloads\\test1.csv') as f:
 	while True:
 		for line in f:
-			if line.count(',') >= 13:
+			if line.count(',') >= 10:
 				lineValues = line.split(',')
 				time = lineValues[0].split(':')
 
-				if isSeq:
-					if (timer.time() - start_time > seqTime):
-						isVentOpen = False
-						Send("vent off")
-						isSeq = False
+				pT_ETH_01.Assign(lineValues[1])
+				pT_ETH_02.Assign(lineValues[2])
+				pT_NO_01.Assign(lineValues[3])
+				pT_NO_02.Assign(lineValues[4])
+				pT_NO_03.Assign(lineValues[5])
+				pT_CH_01.Assign(lineValues[6])
+				tOT_WEIGHT.Assign(lineValues[7])
+				tC_01.Assign(lineValues[8])
+				tC_02.Assign(lineValues[9])
+				tC_03.Assign(lineValues[10])
 
+				'''
 				load.Assign(lineValues[11])
 				tankPress.Assign(lineValues[2])
 				tankTemp.Assign(lineValues[1])
@@ -325,42 +278,22 @@ with open('C:\\Users\\chris\\Documents\\ValkryieLaunchData.csv') as f:
 				combPress.Assign(lineValues[6])
 				feedPress.Assign(lineValues[5])
 				'''
-				windowSize = window.size
-				column = window['col1']
-				newSize = "Comic " + str(int((0.002)*((windowSize[0]*windowSize[1])/100)))
-				for row in column.Rows:
-					for element in row:
-						element.Widget.config(font = newSize)
-				newerSize = "Comic " + str(int((0.0015)*((windowSize[0]*windowSize[1])/100)))
-				column = window['col2.5']
-				for row in column.Rows:
-					for element in row:
-						element.Widget.config(font = newerSize)
-				column = window['col4.5']
-				for row in column.Rows:
-					for element in row:
-						element.Widget.config(font = newerSize)
-						'''
-				if (isFillOpen):
-					window['FA'].update("Feed Line Open", background_color = onColor)
-				else:
-					window['FA'].update("Feed Line Closed", background_color = offColor)
 
-				if (isVentOpen):
-					window['TA'].update("Purge Valve Open", background_color = onColor)
-				else:
-					window['TA'].update("Purge Valve Closed", background_color = offColor)
+				man = [
+					pT_ETH_01.getData(),
+					pT_ETH_02.getData(),
+					pT_NO_01.getData(),
+					pT_NO_02.getData(),
+					pT_NO_03.getData(),
+					pT_CH_01.getData(),
+					tOT_WEIGHT.getData(),
+					tC_01.getData(),
+					tC_02.getData(),
+					tC_03.getData(),
+					]
+				window['TABLE'].update(values = man, row_colors = colors)
 
-				if (isMainOn):
-					window['MA'].update("Main OX On", background_color = onColor)
-				else:
-					window['MA'].update("Main OX Off", background_color = offColor)
-
-				if (isIgniteOn):
-					window['IA'].update("Ignition On", background_color = onColor)
-				else:
-					window['IA'].update("Ignition Off", background_color = offColor)
-
+				'''
 				load.Graph('#5C8374')
 				tankPress.Graph('#087cb4')
 				tankTemp.Graph('#F2613F')
@@ -368,13 +301,37 @@ with open('C:\\Users\\chris\\Documents\\ValkryieLaunchData.csv') as f:
 				combBotTemp.Graph('#E95793')
 				combPress.Graph('#5C527F')
 				feedPress.Graph('#5C527F')
+				'''
+
+				pT_ETH_01.Graph('#5C527F')
+				pT_ETH_02.Graph('#5C527F')
+				pT_NO_01.Graph('#5C527F')
+				pT_NO_02.Graph('#5C527F')
+				pT_NO_03.Graph('#5C527F')
+				pT_CH_01.Graph('#5C527F')
+				tOT_WEIGHT.Graph('#5C527F')
+				tC_01.Graph('#5C527F')
+				tC_02.Graph('#5C527F')
+				tC_03.Graph('#5C527F')
 
 				x+=1
 
 				if (x==500):
 
 					x = -250
-
+					
+					pT_ETH_01.Lines(-250, 950, -10, 1600, -750)
+					pT_ETH_02.Lines(-250, 190, -10, 1600, -750)
+					pT_NO_01.Lines(-250, 190, -10, 1600, -750)
+					pT_NO_02.Lines(-250, 190, -10, 1600, -750)
+					pT_NO_03.Lines(-250, 190, -10, 1600, -750)
+					pT_CH_01.Lines(-250, 190, -10, 1600, -750)
+					tOT_WEIGHT.Lines(-250, 1200, -1400, 1400, -750)
+					tC_01.Lines(-250, 90, -20, 100, -750)
+					tC_02.Lines(-250, 90, -20, 100, -750)
+					tC_03.Lines(-250, 90, -20, 100, -750)
+					
+					'''
 					load.Lines(-250, 190, 20, 200, -750)
 					tankPress.Lines(-250, 950, 100, 1000, -750)
 					tankTemp.Lines(-250, 55, -40, 60, -750)
@@ -382,42 +339,16 @@ with open('C:\\Users\\chris\\Documents\\ValkryieLaunchData.csv') as f:
 					combTopTemp.Lines(-250, 95, 10, 100, -750)
 					combBotTemp.Lines(-250, 95, 10, 100, -750)
 					feedPress.Lines(-250, 950, 100, 1000, -750)
+					'''
 					
 				event, values = window.read(timeout = 1)
-
-				Events(event)
+				Events(event, values)
 
 				if event == sg.WIN_CLOSED:
 					break
 
-		if (isFillOpen):
-			window['FA'].update("Feed Line Open", background_color = onColor)
-		else:
-			window['FA'].update("Feed Line Closed", background_color = offColor)
-
-		if (isVentOpen):
-			window['TA'].update("Purge Valve Open", background_color = onColor)
-		else:
-			window['TA'].update("Purge Valve Closed", background_color = offColor)
-
-		if (isMainOn):
-			window['MA'].update("Main OX On", background_color = onColor)
-		else:
-			window['MA'].update("Main OX Off", background_color = offColor)
-
-		if (isIgniteOn):
-			window['IA'].update("Ignition On", background_color = onColor)
-		else:
-			window['IA'].update("Ignition Off", background_color = offColor)
-
 		event, values = window.read(timeout = 1) 
 
-		if isSeq:
-			if (timer.time() - start_time > seqTime):
-				isVentOpen = False
-				Send("vent off")
-				isSeq = False
-
-		Events(event)
+		Events(event, values)
 		if event == sg.WIN_CLOSED:
 			break
