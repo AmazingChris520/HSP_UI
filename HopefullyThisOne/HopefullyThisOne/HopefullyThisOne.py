@@ -2,100 +2,61 @@ import PySimpleGUI as sg
 import time as timer
 import random
 import string
-import operator
-
-def sort_table(table, cols):
-    """ sort a table by multiple columns
-        table: a list of lists (or tuple of tuples) where each inner list
-               represents a row
-        cols:  a list (or tuple) specifying the column numbers to sort by
-               e.g. (1,0) would sort by column 1, then by column 0
-    """
-    for col in reversed(cols):
-        try:
-            table = sorted(table, key=operator.itemgetter(col))
-        except Exception as e:
-            sg.popup_error('Error in sort_table', 'Exception in sort_table', e)
-    return table
 
 def Events(events, values):
-	global a
-	global b
-	global c
-	global d
-	global e
-	global isFillOpen
-	global isMainOn
-	global isIgniteOn
-	global isVentOpen
 	global window
-	global LoadGraph
-	global TPGraph
-	global VDGraph
-	global IPGraph
-	global ITGraph
-	global CTGraph
-	global FPGraph
-	global FlightMode
-	global isSeq
-	global seqTime
-	global start_time
+	global pT_ETH_01Graph
+	global pT_ETH_02Graph
+	global pT_NO_01Graph
+	global pT_NO_02Graph
+	global pT_NO_03Graph
+	global pT_CH_01Graph
+	global tOT_WEIGHTGraph
+	global tC_01Graph
+	global tC_02Graph
+	global tC_03Graph
 
-	if event == 'Double':
-		for i in range(1, len(data)):
-			data.append(data[i])
-		window['-TABLE-'].update(values=data[1:][:])
-	if isinstance(event, tuple):
-		# TABLE CLICKED Event has value in format ('-TABLE=', '+CLICKED+', (row,col))
-		if event[0] == '-TABLE-':
-			if event[2][0] == -1 and event[2][1] != -1:           # Header was clicked and wasn't the "row" column
-				col_num_clicked = event[2][1]
-				new_table = sort_table(data[1:][:],(col_num_clicked, 0))
-				window['-TABLE-'].update(new_table)
-				data = [data[0]] + new_table
-			window['-CLICKED-'].update(f'{event[2][0]},{event[2][1]}')
-	print(values['TABLE'])
 	if values['TABLE'] == [0]:
-		print("geeffsd")
-		LoadGraph = not LoadGraph
-		window['LoadGraph'].update(visible=LoadGraph)
-		
-	elif event == 'TABLE':
-		TPGraph = not TPGraph
-		window['TPGraph'].update(visible=TPGraph)
-		
-	elif event == 'VD':
-		VDGraph = not VDGraph
-		window['VDGraph'].update(visible=VDGraph)
-		
-	elif event == 'IT':
-		ITGraph = not ITGraph
-		window['ITGraph'].update(visible=ITGraph)
-		
-	elif event == 'IP':
-		IPGraph = not IPGraph
-		window['IPGraph'].update(visible=IPGraph)
-		
-	elif event == 'CT':
-		CTGraph = not CTGraph
-		window['CTGraph'].update(visible=CTGraph)
-		
-	elif event == 'FP':
-		FPGraph = not FPGraph
-		window['FPGraph'].update(visible=FPGraph)
-	
-	elif event == "Check":
-		FlightMode = not FlightMode
-		if FlightMode:
-			window['CT'].update(visible=False)
-			window['IT'].update(visible=False)
-			window['CTGraph'].update(visible=False)
-			window['ITGraph'].update(visible=False)
-		else:
-			window['CT'].update(visible=True)
-			window['IT'].update(visible=True)
+		pT_ETH_01Graph = not pT_ETH_01Graph
+		window['PT-ETH-01'].update(visible=pT_ETH_01Graph)
 
-	window['dsd'].contents_changed()
+	elif values['TABLE'] == [1]:
+		pT_ETH_02Graph = not pT_ETH_02Graph
+		window['PT-ETH-02'].update(visible=pT_ETH_02Graph)
+
+	elif values['TABLE'] == [2]:
+		pT_NO_01Graph = not pT_NO_01Graph
+		window['PT-NO-01'].update(visible=pT_NO_01Graph)
+
+	elif values['TABLE'] == [3]:
+		pT_NO_02Graph = not pT_NO_02Graph
+		window['PT-NO-02'].update(visible=pT_NO_02Graph)
+
+	elif values['TABLE'] == [4]:
+		pT_NO_03Graph = not pT_NO_03Graph
+		window['PT-NO-03'].update(visible=pT_NO_03Graph)
+
+	elif values['TABLE'] == [5]:
+		pT_CH_01Graph = not pT_CH_01Graph
+		window['PT-CH-01'].update(visible=pT_CH_01Graph)
+
+	elif values['TABLE'] == [6]:
+		tOT_WEIGHTGraph = not tOT_WEIGHTGraph
+		window['TOT-WEIGHT'].update(visible=tOT_WEIGHTGraph)
+
+	elif values['TABLE'] == [7]:
+		tC_01Graph = not tC_01Graph
+		window['TC-01'].update(visible=tC_01Graph)
+
+	elif values['TABLE'] == [8]:
+		tC_02Graph = not tC_02Graph
+		window['TC-02'].update(visible=tC_02Graph)
+
+	elif values['TABLE'] == [9]:
+		tC_03Graph = not tC_03Graph
+		window['TC-03'].update(visible=tC_03Graph)
+		
+	window['col2'].contents_changed()
 
 class Sensor:
 	global x
@@ -117,27 +78,20 @@ class Sensor:
 						
 		#self.value.update(self.title + ":\n" + str(self.data) + " " + self.unit)
 	
-	def Lines(self, start, height, startRange, endRange, dist):
+	def Lines(self, start, height, startRange, endRange, stepSize, dist):
 		self.graph.move(dist,0)
 		self.graph.DrawLine((-500,-500), (-500,1000))
 		self.graph.DrawLine((start,0), (500,0))
-
-		v = 100
 
 		tempTitle = self.title + " (" + self.unit + ")" 
 		
 		self.graph.DrawText(tempTitle, (0,height), color = 'gray', font = fontAndSize)
 
-		temp = int(((abs(startRange)+abs(endRange))/10))
+		stepSize
 
-		for y in range(startRange, endRange, round(temp,-1)):    
+		for y in range(startRange, endRange, stepSize):    
 
-			if endRange == 1000:
-				self.graph.DrawLine((-500,v), (-450,v))    
-				self.graph.DrawText(v, (-400,v), color='gray', font=fontAndSize)  
-				v+=100
-
-			elif y != 0:
+			if y != 0:
 				self.graph.DrawLine((-500,y), (-450,y))    
 				self.graph.DrawText(y, (-400,y), color='gray', font=fontAndSize)  
 
@@ -162,6 +116,17 @@ font2 = "Comic 20"
 padding = [10,10]
 paddingSensor = [15,2]
 
+pT_ETH_01Color = "#5C8374" 
+pT_ETH_02Color = "#087CB4" 
+pT_NO_01Color = "#F2613F" 
+pT_NO_02Color = "#E95793" 
+pT_NO_03Color = "#5C527F" 
+pT_CH_01Color = "#A3C7B3" 
+tOT_WEIGHTColor = "#FFD166" 
+tC_01Color = "#6EC2EC" 
+tC_02Color = "#8CA772" 
+tC_03Color = "#C44D2F"
+
 column_layout1 = [[ sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,1600), key='PT-ETH-01', visible = False, background_color=buttonBackgroundColor),
 			sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,1600), key='PT-ETH-02', visible = False, background_color=buttonBackgroundColor),
 			sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,1600), key='PT-NO-01', visible = False, background_color=buttonBackgroundColor),
@@ -173,26 +138,21 @@ column_layout1 = [[ sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20)
 			sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,100), key='TC-02', visible = False, background_color=buttonBackgroundColor),
 			sg.Graph(canvas_size=(500, 500),graph_bottom_left=(-500,-20), graph_top_right=(500,100), key='TC-03', visible = False, background_color=buttonBackgroundColor),]]
 
-column_layout5 = [[sg.Column(column_layout1, scrollable=True, key='dsd', background_color=backgroundColor, expand_x=True , expand_y=True, sbar_arrow_color=buttonBackgroundColor, sbar_background_color=buttonBackgroundColor, sbar_frame_color=buttonBackgroundColor, sbar_trough_color=buttonBackgroundColor)]]
-
 colors = [
-	[0, "#000000", backgroundColor],
-	[1, "#023000", backgroundColor],
-	[2, "#006050", backgroundColor],
-	[3, "#000540", backgroundColor],
-	[4, "#034000", backgroundColor],
-	[5, "#002600", backgroundColor],
-	[6, "#001200", backgroundColor],
-	[7, "#002300", backgroundColor],
-	[8, "#004320", backgroundColor],
-	[9, "#006500", backgroundColor],
+	[0, pT_ETH_01Color, backgroundColor],
+	[1, pT_ETH_02Color, backgroundColor],
+	[2, pT_NO_01Color, backgroundColor],
+	[3, pT_NO_02Color, backgroundColor],
+	[4, pT_NO_03Color, backgroundColor],
+	[5, pT_CH_01Color, backgroundColor],
+	[6, tOT_WEIGHTColor, backgroundColor],
+	[7, tC_01Color, backgroundColor],
+	[8, tC_02Color, backgroundColor],
+	[9, tC_03Color, backgroundColor],
 ]
 
 layout = [[sg.Table(values=[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],], headings=["Sensor", "Value"],
 					cols_justification = ['l','r'],
-					col_widths = [1,1],
-					def_col_width = 2,
-					auto_size_columns = False,
 					hide_vertical_scroll = True,
 					row_height = 100,
 					row_colors = colors,
@@ -203,7 +163,7 @@ layout = [[sg.Table(values=[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],], headings=["Se
 					key='TABLE',
 					enable_events=True,
 					expand_x=True,
-					expand_y=True,), sg.Column(column_layout5, element_justification='center', background_color=backgroundColor,  vertical_alignment='c', k = 'col2', expand_x=True , expand_y=True)]]
+					expand_y=True,), sg.Column(column_layout1, element_justification='left', background_color=backgroundColor,  vertical_alignment='l', k = 'col2', expand_x=True , expand_y=True, size = (1250,2000), scrollable=True, sbar_arrow_color=buttonBackgroundColor, sbar_background_color=buttonBackgroundColor, sbar_frame_color=buttonBackgroundColor, sbar_trough_color=buttonBackgroundColor)]]
 
 window = sg.Window('HSP UI', layout, grab_anywhere=True, finalize=True, background_color=backgroundColor, size = (1920,1080), resizable=True, scaling=1)  
 
@@ -221,34 +181,28 @@ tC_03 = Sensor(window['TC-03'], "TC-03", "F")
 # Draw Graph    
 x = -500
 h = 0
-LoadGraph = False
-TPGraph = False
-VDGraph = False
-IPGraph = False
-ITGraph = False
-CTGraph = False
-FPGraph = False
+pT_ETH_01Graph = False
+pT_ETH_02Graph = False
+pT_NO_01Graph = False
+pT_NO_02Graph = False
+pT_NO_03Graph = False
+pT_CH_01Graph = False
+tOT_WEIGHTGraph = False
+tC_01Graph = False
+tC_02Graph = False
+tC_03Graph = False
 
-pT_ETH_01.Lines(-500, 950, -10, 1600, 0)
-pT_ETH_02.Lines(-500, 190, -10, 1600, 0)
-pT_NO_01.Lines(-500, 190, -10, 1600, 0)
-pT_NO_02.Lines(-500, 190, -10, 1600, 0)
-pT_NO_03.Lines(-500, 190, -10, 1600, 0)
-pT_CH_01.Lines(-500, 190, -10, 1600, 0)
-tOT_WEIGHT.Lines(-500, 1200, -1400, 1400, 0)
-tC_01.Lines(-500, 90, -20, 100, 0)
-tC_02.Lines(-500, 90, -20, 100, 0)
-tC_03.Lines(-500, 90, -20, 100, 0)
+pT_ETH_01.Lines(-500, 1520, 0, 1600, 250, 0)
+pT_ETH_02.Lines(-500, 1520, 0, 1600, 250, 0)
+pT_NO_01.Lines(-500, 1520, 0, 1600,  250,0)
+pT_NO_02.Lines(-500, 1520, 0, 1600,  250,0)
+pT_NO_03.Lines(-500, 1520, 0, 1600, 250, 0)
+pT_CH_01.Lines(-500, 1520, 0, 1600, 250, 0)
+tOT_WEIGHT.Lines(-500, 1330, -1400, 1400, 200, 0)
+tC_01.Lines(-500, 95, -20, 100, 10, 0)
+tC_02.Lines(-500, 95, -20, 100, 10, 0)
+tC_03.Lines(-500, 95, -20, 100, 10, 0)
 
-'''
-load.Lines(-500, 190, 20, 200, 0)
-tankPress.Lines(-500, 950, 100, 1000, 0)
-tankTemp.Lines(-500, 55, -40, 60, 0)
-combPress.Lines(-500, 950, 100, 1000, 0)
-combTopTemp.Lines(-500, 95, 10, 100, 0)
-combBotTemp.Lines(-500, 95, 10, 100, 0)
-feedPress.Lines(-500, 950, 100, 1000, 0)
-'''
 startingSize = (1920,1080)
 
 with open('C:\\Users\\chris\\Downloads\\test1.csv') as f:
@@ -269,16 +223,6 @@ with open('C:\\Users\\chris\\Downloads\\test1.csv') as f:
 				tC_02.Assign(lineValues[9])
 				tC_03.Assign(lineValues[10])
 
-				'''
-				load.Assign(lineValues[11])
-				tankPress.Assign(lineValues[2])
-				tankTemp.Assign(lineValues[1])
-				combTopTemp.Assign(lineValues[3])
-				combBotTemp.Assign(lineValues[4])
-				combPress.Assign(lineValues[6])
-				feedPress.Assign(lineValues[5])
-				'''
-
 				man = [
 					pT_ETH_01.getData(),
 					pT_ETH_02.getData(),
@@ -291,63 +235,44 @@ with open('C:\\Users\\chris\\Downloads\\test1.csv') as f:
 					tC_02.getData(),
 					tC_03.getData(),
 					]
+				
 				window['TABLE'].update(values = man, row_colors = colors)
 
-				'''
-				load.Graph('#5C8374')
-				tankPress.Graph('#087cb4')
-				tankTemp.Graph('#F2613F')
-				combTopTemp.Graph('#E95793')
-				combBotTemp.Graph('#E95793')
-				combPress.Graph('#5C527F')
-				feedPress.Graph('#5C527F')
-				'''
-
-				pT_ETH_01.Graph('#5C527F')
-				pT_ETH_02.Graph('#5C527F')
-				pT_NO_01.Graph('#5C527F')
-				pT_NO_02.Graph('#5C527F')
-				pT_NO_03.Graph('#5C527F')
-				pT_CH_01.Graph('#5C527F')
-				tOT_WEIGHT.Graph('#5C527F')
-				tC_01.Graph('#5C527F')
-				tC_02.Graph('#5C527F')
-				tC_03.Graph('#5C527F')
+				pT_ETH_01.Graph(pT_ETH_01Color)
+				pT_ETH_02.Graph(pT_ETH_02Color)
+				pT_NO_01.Graph(pT_NO_01Color)
+				pT_NO_02.Graph(pT_NO_02Color)
+				pT_NO_03.Graph(pT_NO_03Color)
+				pT_CH_01.Graph(pT_CH_01Color)
+				tOT_WEIGHT.Graph(tOT_WEIGHTColor)
+				tC_01.Graph(tC_01Color)
+				tC_02.Graph(tC_02Color)
+				tC_03.Graph(tC_03Color)
 
 				x+=1
 
 				if (x==500):
 
 					x = -250
+										
+					pT_ETH_01.Lines(-250, 1520, 0, 1600, 250, -750)
+					pT_ETH_02.Lines(-250, 1520, 0, 1600, 250, -750)
+					pT_NO_01.Lines(-250, 1520, 0, 1600,  250,-750)
+					pT_NO_02.Lines(-250, 1520, 0, 1600,  250,-750)
+					pT_NO_03.Lines(-250, 1520, 0, 1600, 250, -750)
+					pT_CH_01.Lines(-250, 1520, 0, 1600, 250, -750)
+					tOT_WEIGHT.Lines(-250, 1330, -1400, 1400, 200, -750)
+					tC_01.Lines(-250, 95, -20, 100, 10, -750)
+					tC_02.Lines(-250, 95, -20, 100, 10, -750)
+					tC_03.Lines(-250, 95, -20, 100, 10, -750)
 					
-					pT_ETH_01.Lines(-250, 950, -10, 1600, -750)
-					pT_ETH_02.Lines(-250, 190, -10, 1600, -750)
-					pT_NO_01.Lines(-250, 190, -10, 1600, -750)
-					pT_NO_02.Lines(-250, 190, -10, 1600, -750)
-					pT_NO_03.Lines(-250, 190, -10, 1600, -750)
-					pT_CH_01.Lines(-250, 190, -10, 1600, -750)
-					tOT_WEIGHT.Lines(-250, 1200, -1400, 1400, -750)
-					tC_01.Lines(-250, 90, -20, 100, -750)
-					tC_02.Lines(-250, 90, -20, 100, -750)
-					tC_03.Lines(-250, 90, -20, 100, -750)
-					
-					'''
-					load.Lines(-250, 190, 20, 200, -750)
-					tankPress.Lines(-250, 950, 100, 1000, -750)
-					tankTemp.Lines(-250, 55, -40, 60, -750)
-					combPress.Lines(-250, 950, 100, 1000, -750)
-					combTopTemp.Lines(-250, 95, 10, 100, -750)
-					combBotTemp.Lines(-250, 95, 10, 100, -750)
-					feedPress.Lines(-250, 950, 100, 1000, -750)
-					'''
-					
-				event, values = window.read(timeout = 1)
+				event, values = window.read(timeout = 0)
 				Events(event, values)
 
 				if event == sg.WIN_CLOSED:
 					break
 
-		event, values = window.read(timeout = 1) 
+		event, values = window.read(timeout = 0) 
 
 		Events(event, values)
 		if event == sg.WIN_CLOSED:
